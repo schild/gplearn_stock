@@ -357,43 +357,30 @@ must specify stockList or indexes"""
     l=LoadDataCVS(constants.IP,constants.PORT)
     l.Conn()
 
-    if stockList=="hs300" or stockList=="zz500" or stockList=="sz50" or stockList=="all":
+    if stockList in ["hs300", "zz500", "sz50", "all"]:
         stocks=l.getstocklist(stockList)
     else:
         stocks=stockList
-    
+
     #print stocks
 
     if stocks is not None:
         for stock in stocks:
             stkd= l.getstockdaily(stock,start,end)
-            if not adjusted:   
-                data[stock] = stkd
-            else:
+            if adjusted:
                 adj_cols = ['open', 'high', 'low', 'close']
                 ratio = stkd['price']/stkd['close']
                 ratio_filtered = ratio.fillna(0).values
                 for col in adj_cols:
                     stkd[col] *= ratio_filtered
-                data[stock] = stkd
+            data[stock] = stkd
         return [data,start_time,end_time]        
-            
-    
+
+
     if indexes is not None:
         stkd= l.getindexdaily(indexes,start,end)
         data[indexes] = stkd
         return data
-        '''
-        for name, ticker in items(indexes):
-            print (name,ticker)
-            logger.info('Loading index: {} ({})'.format(name, ticker))
-            stkd= l.getindexdaily(indexes,start,end)
-            data[name] = stkd
-        return data 
-        '''
-        
-        
-        
     '''
     #['open','high','low','close','volume','price','change',"code"]
     print (data)
@@ -429,7 +416,7 @@ def load_minute_data(indexes=None,stockList=None,start=None,end=None,adjusted=Fa
     """
     must specify stockList or indexes"""
     #对日期进行改造，提取的数据日期应该高于多于开始日期一个月，这样对于原数据有缓冲作用
-    
+
     starts = start
     ends =end
     #start_time = pd.Timestamp(start,tz='UTC')
@@ -449,11 +436,11 @@ def load_minute_data(indexes=None,stockList=None,start=None,end=None,adjusted=Fa
     l=LoadDataCVS(constants.IP,constants.PORT)
     l.Conn()
 
-    if stockList=="hs300" or stockList=="zz500" or stockList=="sz50" or stockList=="all":
+    if stockList in ["hs300", "zz500", "sz50", "all"]:
         stocks=l.getstocklist(stockList)
     else:
         stocks=stockList
-    
+
     #print stocks
 
     if stocks is not None:
@@ -487,9 +474,9 @@ def load_minute_data(indexes=None,stockList=None,start=None,end=None,adjusted=Fa
             for col in adj_cols:
                 panel[ticker][col] *= ratio_filtered
 
-    starts = str(starts) + ' 09:25:00'
+    starts = f'{str(starts)} 09:25:00'
     start_time = pd.Timestamp(starts,tz='UTC')
-    ends = str(ends) + ' 09:25:00'
+    ends = f'{str(ends)} 09:25:00'
     end_time = pd.Timestamp(ends,tz='UTC')
     return [panel,start_time,end_time]
     
@@ -572,10 +559,7 @@ def load_from_yahoo(indexes=None,
 
     """
     data = _load_raw_yahoo_data(indexes, stocks, start, end)
-    if adjusted:
-        close_key = 'Adj Close'
-    else:
-        close_key = 'Close'
+    close_key = 'Adj Close' if adjusted else 'Close'
     df = pd.DataFrame({key: d[close_key] for key, d in iteritems(data)})
     df.index = df.index.tz_localize(pytz.utc)
     return df
@@ -644,8 +628,5 @@ def load_prices_from_csv_folder(folderpath, identifier_col, tz='UTC'):
             continue
         raw = load_prices_from_csv(os.path.join(folderpath, file),
                                    identifier_col, tz)
-        if data is None:
-            data = raw
-        else:
-            data = pd.concat([data, raw], axis=1)
+        data = raw if data is None else pd.concat([data, raw], axis=1)
     return data
