@@ -151,13 +151,12 @@ class _Program(object):
         self.feature_names = feature_names
         self.program = program
 
-        if self.program is not None:
-            if not self.validate_program():
-                raise ValueError('The supplied program is incomplete.')
-        else:
+        if self.program is None:
             # Create a naive random program,如果判断program wei none则进行建立program
             self.program = self.build_program(random_state)
 
+        elif not self.validate_program():
+            raise ValueError('The supplied program is incomplete.')
         self.raw_fitness_ = None
         self.fitness_ = None
         self.parents = None
@@ -254,7 +253,7 @@ class _Program(object):
             #print (u'i',i,u'node','node')
             if isinstance(node, _Function):
                 terminals.append(node.arity)
-                output += node.name + '('
+                output += f'{node.name}('
             else:
                 if isinstance(node, int):
                     if self.feature_names is None:
@@ -375,16 +374,16 @@ class _Program(object):
         if isinstance(node, int):
             #print (time()-t,u'no2')
             return X[:, node]
-        
+
         apply_stack = []
-        
+
         for node in self.program:
             if isinstance(node, _Function):
                 apply_stack.append([node])
             else:
                 # Lazily evaluate later
                 apply_stack[-1].append(node)
-           
+
             while len(apply_stack[-1]) == apply_stack[-1][0].arity + 1:
                 function = apply_stack[-1][0]
                 terminals = [np.repeat(t, X.shape[0]) if isinstance(t, float)
@@ -392,18 +391,16 @@ class _Program(object):
                              else t for t in apply_stack[-1][1:]]
 
                 intermediate_result = function(*terminals)
-                if len(apply_stack) != 1:
-                    apply_stack.pop()
-                    apply_stack[-1].append(intermediate_result)
-                else:
-                    return intermediate_result       
+                if len(apply_stack) == 1:
+                    return intermediate_result
+                apply_stack.pop()
+                apply_stack[-1].append(intermediate_result)
         # We should never get here
         return None    
     
     def jiasu(self,y_pred,y):
         list_t = np.argsort(y_pred)
-        tt =sum([y[i] for i in list_t[-50:]])
-        return tt
+        return sum(y[i] for i in list_t[-50:])
     def stock_excute(self,x,y):
         '''
         本程序用于对股票数据进行处理，用于计算股票收益的适应度情况
@@ -492,13 +489,10 @@ class _Program(object):
 
         """
         #print (self.metric.stock_is)
-        if not self.metric.stock_is:    
-            y_pred = self.execute(X)
-        else:
-            y_pred = self.stock_excute(X,y)
+        y_pred = self.stock_excute(X,y) if self.metric.stock_is else self.execute(X)
         if self.transformer:
             y_pred = self.transformer(y_pred)
-        sample_weight = [1 for i in range(len(y_pred))]
+        sample_weight = [1 for _ in range(len(y_pred))]
         raw_fitness = self.metric(y, y_pred, sample_weight)
         del X,y,y_pred
         gc.collect()

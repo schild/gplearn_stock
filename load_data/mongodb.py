@@ -121,21 +121,15 @@ class LoadDataCVS:
     def getstocklist(self,kind):
         ret=[]
         if kind=="hs300":
-            for t in self.pool['hz300'].find():
-                ret.append(t['code'])
+            ret.extend(t['code'] for t in self.pool['hz300'].find())
         if kind =="zz500":
-            for t in self.pool['zz500'].find():
-                ret.append(t['code'])
+            ret.extend(t['code'] for t in self.pool['zz500'].find())
         if kind=='sz50':
-            for t in self.pool['sz'].find():
-                ret.append(t['code'])
+            ret.extend(t['code'] for t in self.pool['sz'].find())
         if kind =='st':
-            for t in self.pool['st'].find():
-                ret.append(t['code'])
+            ret.extend(t['code'] for t in self.pool['st'].find())
         if kind == 'all':
-            for t in self.pool['all'].find():
-                ret.append(t['codes'])
-            
+            ret.extend(t['codes'] for t in self.pool['all'].find())
         return ret 
         
         #get daily stock information from database
@@ -187,12 +181,10 @@ class LoadDataCVS:
         tt_date = '1991-01-01'
         tt = self.minute_stock[code].find({"date": {"$gte": startdate,"$lte":enddate}}).sort("date")
         for stockdaily in tt:
-            if tt_date != str(stockdaily["date"])[0:10]:
-                time_day = datetime.datetime.strptime(str(stockdaily['date'])[0:10], "%Y-%m-%d")
+            if tt_date != str(stockdaily["date"])[:10]:
+                time_day = datetime.datetime.strptime(str(stockdaily['date'])[:10], "%Y-%m-%d")
                 tt =self.connection[code].find({"date": {"$gte":time_day ,"$lte":time_day}})[0]
-                tt_date = str(stockdaily["date"])[0:10]
-            else:
-                pass
+                tt_date = str(stockdaily["date"])[:10]
             series["date"].append(stockdaily["date"])
             series["open"].append(stockdaily["open"])
             series["close"].append(stockdaily["close"])
@@ -206,7 +198,7 @@ class LoadDataCVS:
         del tt
         gc.collect()
         totaldata=zip(series['open'],series['high'],series['low'],series['close'],series['volume'],series["prices"],series["change"],series["code"],series['date'])
-        
+
         df = pd.DataFrame(data=list(totaldata),index=series["date"],columns = ['open','high','low','close','volume','prices','change',"code",'date'])
         df['change']= df['change']/100
         df['volume'] = df['volume']*100
@@ -289,9 +281,6 @@ class LoadDataCVS:
         in_package_data = range(2002, 2019)
         print (in_package_data)
         cur_year = datetime.datetime.now().year
-        last_in_package_data = max(in_package_data)
-
-
         # download new data
         '''
         to_downloads = range(last_in_package_data + 1, cur_year + 1)
@@ -313,19 +302,19 @@ class LoadDataCVS:
 
         # combine all data'''
 
-        dfs = []
-
         basedir = os.path.join(os.path.dirname(__file__), "xlsx")
 
-        for i in in_package_data:
-            dfs.append(pd.read_excel(os.path.join(basedir, "%d.xlsx" % i)))
+        last_in_package_data = max(in_package_data)
+        dfs = [
+            pd.read_excel(os.path.join(basedir, "%d.xlsx" % i))
+            for i in in_package_data
+        ]
+
         '''
         for memfile in fetched_data:
             dfs.append(pd.read_excel(memfile))
         '''
-        df = pd.concat(dfs)
-
-        return df
+        return pd.concat(dfs)
 
     def get_pivot_data(self):
 
